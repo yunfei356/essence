@@ -1,0 +1,55 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1671\cocoasubrtf100
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 \{\
+    "version" : "2017-02-28",\
+	"operation" : "PutItem",\
+	"key" : \{\
+		"personId" : $util.dynamodb.toDynamoDBJson($util.autoId())\
+	\},\
+    \
+    #set($inputMap = $context.arguments.input)\
+    $util.qr($inputMap.put("preferences", \{\}))\
+    $util.qr($inputMap.preferences.put("minBirthdate", $ctx.args.input.profileBase.birthdate))\
+    $util.qr($inputMap.preferences.put("maxBirthdate", $util.time.nowFormatted("yyyy-MM-dd")))\
+    #set($notFemale = !$ctx.args.input.profileBase.isFemale)\
+    $util.qr($inputMap.preferences.put("getMale", $notFemale))\
+    $util.qr($inputMap.preferences.put("getFemale", $ctx.args.input.profileBase.isFemale))\
+    #set($attribs = $util.dynamodb.toMapValues($inputMap))\
+\
+	#if($ctx.args.input.profileBase.containsKey("profilePicture"))\
+		#set($inputProfilePicture = $ctx.args.input.profileBase.profilePicture)\
+		#if($util.isNull($inputProfilePicture.version))\
+			#set($attribs.profileBase.profilePicture =\
+		$util.dynamodb.toS3Object($inputProfilePicture.key,\
+		$inputProfilePicture.bucket, $inputProfilePicture.region))\
+		#else\
+			#set($attribs.profileBase.profilePicture =\
+		$util.dynamodb.toS3Object($inputProfilePicture.key,\
+		$inputProfilePicture.bucket, $inputProfileBase.profilePicture.region, $inputProfilePicture.version))\
+		#end\
+  	#end\
+\
+	#if($ctx.arguments.input.profileBase.containsKey("otherPictures"))\
+		#set($attribs.profileBase.otherPictures = [])\
+		#set($inputOtherPictures = $ctx.args.input.profileBase.otherPictures)\
+		#foreach($picture in $inputOtherPictures)\
+			#if($util.isNull($picture.version))\
+				$util.qr($attribs.profileBase.otherPictures.add($util.dynamodb.toS3Object($picture.key,\
+		$picture.bucket, $picture.region)))\
+			#else\
+				$util.qr($attribs.profileBase.otherPictures.add($util.dynamodb.toS3Object($picture.key,\
+		$picture.bucket, $picture.region, $picture.version)))\
+			#end\
+		#end\
+    #end\
+\
+	"attributeValues": $util.toJson($attribs)\
+\}\
+\
+## Pass back the result from DynamoDB. **\
+$util.toJson($ctx.result)}

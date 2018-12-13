@@ -1,0 +1,156 @@
+﻿schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+type CandidateProfile {
+  cScore: Float!
+  personId: ID!
+  profileBase: ProfileBase!
+}
+
+type Candidates {
+  candidates: [CandidateProfile]
+  lastEvaluatedKey: String
+}
+
+type Message {
+  messageText: String!
+  receiverId: ID!
+  senderId: ID!
+  timeSent: AWSDateTime
+}
+
+type Mutation {
+  addMessage(input: AddMessageInput!): Message
+  createProfile(input: CreateProfileInput): MyProfile
+  updateAnswers(input: NewAnswersInput): Boolean
+  updateCandidates(input: UpdateCandidatesInput): Boolean
+  updateProfile(input: UpdateProfileInput): MyProfile
+}
+
+type MyProfile {
+  personId: ID!
+  profileBase: ProfileBase!
+}
+
+type ProfileBase {
+  birthdate: AWSDate
+  email: AWSEmail!
+  isFemale: Boolean
+  location: String!
+  location_coords: [Float]!
+  name: String!
+  otherPictures: [S3Object]
+  phone: AWSPhone
+  selfIntro: String
+}
+
+type Query {
+  getCandidates(input: GetCandidatesInput!): Candidates
+  getProfile(input: GetProfileInput!): MyProfile
+  getUnansweredQuestions(input: GetQuestionsInput!): [Question]
+}
+
+type Question {
+  answerChoices: [String]!
+  lang: String!
+  numSelectionsAllowed: Int!
+  questionId: ID!
+  text: String!
+  type: String!
+}
+
+type S3Object {
+  bucket: String!
+  key: String!
+  region: String!
+}
+
+type Subscription {
+  addedMessage(senderId: ID!): Message @aws_subscribe(mutations : ["addMessage"])
+}
+
+input AddMessageInput {
+  messageText: String!
+  receiverId: ID!
+  senderId: ID!
+}
+
+input AnswerInput {
+  questionId: Int!
+  selectedAnswers: [Int]!
+}
+
+input CandidateInput {
+  candidateId: ID!
+  likedByMe: Boolean
+  personId: ID!
+}
+
+input CreateProfileInput {
+  profileBase: ProfileBaseInput!
+}
+
+input GetCandidatesInput {
+  getFemale: Boolean
+  getMale: Boolean
+  lastEvaluatedKey: String
+  location: String!
+  maxBirthdate: AWSDate
+  minBirthdate: AWSDate
+  personId: ID!
+}
+
+input GetProfileInput {
+  personId: ID!
+}
+
+input GetQuestionsInput {
+  lang: String!
+  personId: ID!
+  type: String!
+}
+
+input NewAnswersInput {
+  answers: [AnswerInput]!
+  personId: ID!
+}
+
+input PreferencesInput {
+  getFemale: Boolean
+  getMale: Boolean
+  maxBirthdate: AWSDate
+  minBirthdate: AWSDate
+}
+
+input ProfileBaseInput {
+  birthdate: AWSDate
+  email: AWSEmail
+  isFemale: Boolean
+  location: String
+  locationCoords: [Int]
+  name: String
+  otherPictures: [S3ObjectInput]
+  phone: AWSPhone
+  selfIntro: String
+}
+
+input S3ObjectInput {
+  bucket: String!
+  key: String!
+  localUri: String!
+  mimeType: String!
+  region: String!
+}
+
+input UpdateCandidatesInput {
+  candidates: [CandidateInput]
+}
+
+input UpdateProfileInput {
+  personId: ID!
+  preferences: PreferencesInput
+  profileBase: ProfileBaseInput
+}
