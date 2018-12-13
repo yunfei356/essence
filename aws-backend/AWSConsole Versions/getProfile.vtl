@@ -1,0 +1,11 @@
+{
+    "version": "2017-02-28",
+	"operation": "GetItem",
+	"key" : {
+		"personId" : $util.dynamodb.toDynamoDBJson($context.arguments.input.personId)
+	},
+	"consistentRead" : true
+}
+
+## Pass back the result from DynamoDB. **
+$util.toJson($ctx.result)

@@ -1,0 +1,91 @@
+{
+    ## Request Mapping Template **
+	## TODO: update profile pictures are not included in this file **
+
+	"version": "2017-02-28",
+
+	"operation" : "UpdateItem",
+
+	"key" : {
+		"personId" : $util.dynamodb.toDynamoDBJson($context.arguments.input.personId)
+	},
+
+	## Set up some space to keep track of things we are updating **
+	#set( $expNames = {} )
+	#set( $expValues = {} )
+	#set( $expSet = {} )
+	#set( $expRemove = [] )
+
+	#if($ctx.args.input.containsKey("profileBase"))
+		$!{expNames.put("#profileBase", "profileBase")}
+    
+		## Iterate through each argument, skipping "personId" **
+		#foreach( $entry in $context.arguments.input.profileBase.entrySet() )
+			#if( (!$entry.value) && ("$!{entry.value}" == "") )
+				#set( $discard = ${expRemove.add("#${entry.key}")})
+				$!{expNames.put("#${entry.key}", "$entry.key")}
+			#else
+				$!{expSet.put("#profileBase.#${entry.key}", ":${entry.key}")}
+				$!{expNames.put("#${entry.key}", "$entry.key")}
+			#end
+		
+			#if( $entry.key == "location" || $entry.key == "name" || $entry.key == "selfIntro" || $entry.key == "email") ##TODO: AWSEmail?
+				$!{expValues.put(":${entry.key}", { "S" : "$entry.value" })}
+			#elseif( $entry.key == "locationCoords" )
+				## TODO: how to represent list type? **
+				$!{expValues.put(":${entry.key}", { "L" : [ {"N" : $entry.value[0]}, {"N" : $entry.value[1] }]} )}
+			#elseif( $entry.key == "phone" )
+				## TODO: AWSPhone? **
+				$!{expValues.put(":${entry.key}", { "N" : $entry.value })}
+			#elseif( $entry.key == "birthdate" )
+        		## TODO: fix date data type inconsistencies between create and update **
+				$!{expValues.put(":${entry.key}", { "S" : $entry.value })}
+			#elseif( $entry.key == "isFemale" )
+				$!{expValues.put(":${entry.key}", { "BOOL" : $entry.value })}
+			#end
+		#end
+    #end
+
+	#if($ctx.args.input.containsKey("preferences"))
+    	$!{expNames.put("#preferences", "preferences")}
+		#foreach( $entry in $context.arguments.input.preferences.entrySet() )
+			#if( (!$entry.value) && ("$!{entry.value}" == "") )
+				#set( $discard = ${expRemove.add("#${entry.key}")})
+				$!{expNames.put("#${entry.key}", "$entry.key")}
+			#else
+				$!{expSet.put("#preferences.#${entry.key}", ":${entry.key}")}
+				$!{expNames.put("#${entry.key}", "$entry.key")}
+			#end
+
+			#if( $entry.key == "minBirthdate" || $entry.key ==  "maxBirthdate" )
+				$!{expValues.put(":${entry.key}", { "S" : $entry.value })}
+			#elseif( $entry.key == "getMale" || $entry.key == "getFemale" )
+				$!{expValues.put(":${entry.key}", { "BOOL" : $entry.value })}
+			#end
+		#end
+    #end
+
+	## Start building the update expression, starting with attributes we're going to SET **
+	#set( $expression = "" )
+	#if( !${expSet.isEmpty()} )
+		#set( $expression = "SET" )
+		#foreach( $entry in $expSet.entrySet() )
+			#set( $expression = "${expression} ${entry.key} = ${entry.value}" )
+			#if ( $foreach.hasNext )
+				#set( $expression = "${expression}," )
+			#end
+		#end
+	#end
+
+## Finally, write the update expression **
+	"update" : {
+		"expression" : "${expression}"
+		#if( !${expNames.isEmpty()} ),"expressionNames" : $util.toJson($expNames)
+		#end
+		#if( !${expValues.isEmpty()} ),"expressionValues" : $util.toJson($expValues)
+		#end
+	}
+}
+
+## Pass back the result from DynamoDB. **
+$util.toJson($ctx.result)

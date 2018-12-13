@@ -1,0 +1,48 @@
+{
+    "version" : "2017-02-28",
+	"operation" : "PutItem",
+	"key" : {
+		"personId" : $util.dynamodb.toDynamoDBJson($util.autoId())
+	},
+    
+    #set($inputMap = $context.arguments.input)
+    $util.qr($inputMap.put("preferences", {}))
+    $util.qr($inputMap.preferences.put("minBirthdate", $ctx.args.input.profileBase.birthdate))
+    $util.qr($inputMap.preferences.put("maxBirthdate", $util.time.nowFormatted("yyyy-MM-dd")))
+    #set($notFemale = !$ctx.args.input.profileBase.isFemale)
+    $util.qr($inputMap.preferences.put("getMale", $notFemale))
+    $util.qr($inputMap.preferences.put("getFemale", $ctx.args.input.profileBase.isFemale))
+    #set($attribs = $util.dynamodb.toMapValues($inputMap))
+
+	#if($ctx.args.input.profileBase.containsKey("profilePicture"))
+		#set($inputProfilePicture = $ctx.args.input.profileBase.profilePicture)
+		#if($util.isNull($inputProfilePicture.version))
+			#set($attribs.profileBase.profilePicture =
+		$util.dynamodb.toS3Object($inputProfilePicture.key,
+		$inputProfilePicture.bucket, $inputProfilePicture.region))
+		#else
+			#set($attribs.profileBase.profilePicture =
+		$util.dynamodb.toS3Object($inputProfilePicture.key,
+		$inputProfilePicture.bucket, $inputProfileBase.profilePicture.region, $inputProfilePicture.version))
+		#end
+  	#end
+
+	#if($ctx.arguments.input.profileBase.containsKey("otherPictures"))
+		#set($attribs.profileBase.otherPictures = [])
+		#set($inputOtherPictures = $ctx.args.input.profileBase.otherPictures)
+		#foreach($picture in $inputOtherPictures)
+			#if($util.isNull($picture.version))
+				$util.qr($attribs.profileBase.otherPictures.add($util.dynamodb.toS3Object($picture.key,
+		$picture.bucket, $picture.region)))
+			#else
+				$util.qr($attribs.profileBase.otherPictures.add($util.dynamodb.toS3Object($picture.key,
+		$picture.bucket, $picture.region, $picture.version)))
+			#end
+		#end
+    #end
+
+	"attributeValues": $util.toJson($attribs)
+}
+
+## Pass back the result from DynamoDB. **
+$util.toJson($ctx.result)
